@@ -72,25 +72,25 @@ void ofxDrawIpoints(int x, int y, float sz, std::vector<Ipoint> &ipts, int tailS
         r2 = fRound(s * sin(o)) + r1;
 
         if(o){ //green line = orientation
-            ofSetColor(0x00ff00);
+            ofSetHexColor(0x00ff00);
             ofLine(c1,r1,c2,r2);
         }else{ //green dot = upright conversion
-            ofSetColor(0x00ff00);
+            ofSetHexColor(0x00ff00);
             ofCircle(c1,r1,1);
         }
 
         if(lap>=0){ //blue circle = dark blob on light
-            ofSetColor(0x0000ff);
+            ofSetHexColor(0x0000ff);
             ofNoFill();
             ofCircle(c1,r1,fRound(s));
         }else{ // red circle = light blob on dark
-            ofSetColor(0xff0000);
+            ofSetHexColor(0xff0000);
             ofNoFill();
             ofCircle(c1,r1,fRound(s));
         }
 
         if(tailSize){ //draw motion ipoint dx dy
-            ofSetColor(0xffffff);
+            ofSetHexColor(0xffffff);
             ofLine(c1,r1,int(c1+ipt->dx*tailSize),int(r1+ipt->dy*tailSize));
         }
     }
@@ -121,7 +121,7 @@ void ofxSurfMotion::draw(int x, int y, float sz){
     glPushMatrix();
     glTranslatef(x,y,0);
     glScalef(sz,sz,1);
-    ofSetColor(0xff0000);
+    ofSetHexColor(0xff0000);
     ofNoFill();
     for(uint i=0;i<motion.size();i++){
         Motion m = motion[i];
@@ -136,11 +136,11 @@ void ofxSurfMotion::draw(int x, int y, float sz){
     glTranslatef(x,y,0);
     glScalef(sz,sz,1);
     for(uint i=0;i<matches.size();i++){
-        ofSetColor(0xff0000);
+        ofSetHexColor(0xff0000);
         ofNoFill();
         ofCircle(matches[i].first.x,matches[i].first.y,3);
         ofCircle(matches[i].second.x+marker.width,matches[i].second.y,3);
-        ofSetColor(0xffff00);
+        ofSetHexColor(0xffff00);
         ofLine(matches[i].first.x,matches[i].first.y,matches[i].second.x+marker.width,matches[i].second.y);
     }
     glPopMatrix();

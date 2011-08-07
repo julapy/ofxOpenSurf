@@ -13,6 +13,7 @@ ofxSurfImage::~ofxSurfImage()
 void ofxSurfImage::loadImage(string url){
     ofImage img;
     img.loadImage(url);
+    img.setImageType( OF_IMAGE_COLOR );
     allocate(img.width,img.height);
     unsigned char * pix = img.getPixels();
     setFromPixels(pix,img.width,img.height);
