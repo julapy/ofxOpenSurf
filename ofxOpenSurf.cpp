@@ -1,29 +1,88 @@
 #include "ofxOpenSurf.h"
 
-ofxOpenSurf::ofxOpenSurf()
+ofxOpenSurf :: ofxOpenSurf()
 {
-    //ctor
+    srcImage = NULL;
+    trgImage = NULL;
 }
 
-ofxOpenSurf::~ofxOpenSurf()
+ofxOpenSurf :: ~ofxOpenSurf()
 {
-    //dtor
+    //
 }
 
-void ofxSurfStaticMatch(ofxSurfImage * src, ofxSurfImage * dst, IpPairVec * matches){
-     //IpPairVec matches;
-     surfDetDes(src->getCvImage(),src->ipts,false,4,4,2,0.0006f);
-     surfDetDes(dst->getCvImage(),dst->ipts,false,4,4,2,0.0006f);
-     getMatches(src->ipts,dst->ipts,*matches);
-     //return matches;
+void ofxOpenSurf :: surfStaticImage ( ofxCvImage* srcImage, ofxCvImage* trgImage )
+{
+    if( this->srcImage != srcImage )
+    {
+        this->srcImage = srcImage;
+        
+        surfDetDes
+        ( 
+            srcImage->getCvImage(),     // image to find Ipoints in
+            srcIpts,                    // reference to vector of Ipoints
+            false,                      // run in rotation invariant mode?
+            4,                          // number of octaves to calculate
+            4,                          // number of intervals per octave
+            2,                          // initial sampling step
+            0.0006                      // blob response threshold
+        );
+    }
+    
+    if( this->trgImage != trgImage )
+    {
+        this->trgImage = trgImage;
+        
+        surfDetDes
+        ( 
+            trgImage->getCvImage(),     // image to find Ipoints in
+            trgIpts,                    // reference to vector of Ipoints
+            false,                      // run in rotation invariant mode?
+            4,                          // number of octaves to calculate
+            4,                          // number of intervals per octave
+            2,                          // initial sampling step
+            0.0006                      // blob response threshold
+        );
+    }
+    
+    getMatches( srcIpts, trgIpts, matches );
 }
 
-void ofxSurfVideoMatch(ofxSurfImage * cam, ofxSurfImage * mrk, IpPairVec * matches){
-    surfDetDes(cam->getCvImage(),cam->ipts,false,4,4,2,0.001f);
-    getMatches(cam->ipts,mrk->ipts,*matches);
+void ofxOpenSurf :: surfMotionImage ( ofxCvImage* srcImage, ofxCvImage* trgImage )
+{
+    if( this->srcImage != srcImage )
+    {
+        this->srcImage = srcImage;
+        
+        surfDetDes
+        ( 
+            srcImage->getCvImage(),     // image to find Ipoints in
+            srcIpts,                    // reference to vector of Ipoints
+            false,                      // run in rotation invariant mode?
+            4,                          // number of octaves to calculate
+            4,                          // number of intervals per octave
+            2,                          // initial sampling step
+            0.0004                      // blob response threshold
+        );
+    }
+    
+    this->trgImage = trgImage;
+    
+    surfDetDes
+    ( 
+        trgImage->getCvImage(),     // image to find Ipoints in
+        trgIpts,                    // reference to vector of Ipoints
+        false,                      // run in rotation invariant mode?
+        4,                          // number of octaves to calculate
+        4,                          // number of intervals per octave
+        2,                          // initial sampling step
+        0.001                       // blob response threshold
+    );
+    
+    getMatches( srcIpts, trgIpts, matches );
 }
 
-int ofxSurfObjCorners(IpPairVec & matches,const ofPoint src_crn[4],ofPoint dst_crn[4])
+bool ofxOpenSurf :: findCorners ( const ofPoint src_crn[ 4 ], ofPoint dst_crn[ 4 ] )
 {
     CvPoint src_corners[ 4 ];
     CvPoint dst_corners[ 4 ];
@@ -54,94 +113,64 @@ int ofxSurfObjCorners(IpPairVec & matches,const ofPoint src_crn[4],ofPoint dst_c
     return success;
 }
 
-void ofxDrawIpoints(int x, int y, float sz, std::vector<Ipoint> &ipts, int tailSize){
+void ofxOpenSurf :: drawSourcePoints ( int x, int y, float scale )
+{
+    drawPoints( x, y, scale, srcIpts );
+}
+
+void ofxOpenSurf :: drawTargetPoints ( int x, int y, float scale )
+{
+    drawPoints( x, y, scale, trgIpts );
+}
+
+void ofxOpenSurf :: drawPoints ( int x, int y, float scale, vector<Ipoint> &ipts, int tailSize )
+{
     glPushMatrix();
-    glTranslatef(x,y,0);
-    glScalef(sz,sz,1);
-    Ipoint * ipt;
+    glTranslatef( x, y, 0 );
+    glScalef( scale, scale, 1 );
+    Ipoint* ipt;
     float s,o;
     int r1,c1,r2,c2,lap;
-    for(unsigned int i=0;i<ipts.size();i++){
-        ipt = &ipts.at(i);
-        s = ((9.0f/1.2f) * ipt->scale) / 3.0f;
-        o = ipt->orientation;
+    for( int i=0; i<ipts.size(); i++ )
+    {
+        ipt = &ipts.at( i );
+        s   = ( ( 9.0f / 1.2f ) * ipt->scale ) / 3.0f;
+        o   = ipt->orientation;
         lap = ipt->laplacian;
-        r1 = fRound(ipt->y);
-        c1 = fRound(ipt->x);
-        c2 = fRound(s * cos(o)) + c1;
-        r2 = fRound(s * sin(o)) + r1;
-
-        if(o){ //green line = orientation
-            ofSetHexColor(0x00ff00);
-            ofLine(c1,r1,c2,r2);
-        }else{ //green dot = upright conversion
-            ofSetHexColor(0x00ff00);
-            ofCircle(c1,r1,1);
+        r1  = fRound( ipt->y );
+        c1  = fRound( ipt->x );
+        c2  = fRound( s * cos( o ) ) + c1;
+        r2  = fRound( s * sin( o ) ) + r1;
+        
+        if( o ) //green line = orientation
+        {
+            ofSetColor( ofColor :: green );
+            ofLine( c1, r1, c2, r2 );
         }
-
-        if(lap>=0){ //blue circle = dark blob on light
-            ofSetHexColor(0x0000ff);
+        else    //green dot = upright conversion
+        { 
+            ofSetColor( ofColor :: green );
+            ofCircle( c1, r1, 1 );
+        }
+        
+        if( lap >= 0 )  //blue circle = dark blob on light
+        { 
             ofNoFill();
-            ofCircle(c1,r1,fRound(s));
-        }else{ // red circle = light blob on dark
-            ofSetHexColor(0xff0000);
+            ofSetColor( ofColor :: blue );
+            ofCircle( c1, r1, fRound( s ) );
+        }
+        else    // red circle = light blob on dark
+        { 
             ofNoFill();
-            ofCircle(c1,r1,fRound(s));
+            ofSetColor( ofColor :: red );
+            ofCircle( c1, r1, fRound( s ) );
         }
-
-        if(tailSize){ //draw motion ipoint dx dy
-            ofSetHexColor(0xffffff);
-            ofLine(c1,r1,int(c1+ipt->dx*tailSize),int(r1+ipt->dy*tailSize));
+        
+        if( tailSize ) //draw motion ipoint dx dy
+        { 
+            ofSetColor( ofColor :: white );
+            ofLine( c1, r1, (int)( c1 + ipt->dx * tailSize ), (int)( r1 + ipt->dy * tailSize ) );
         }
     }
     glPopMatrix();
 }
-
-void ofxSurfMotion::setup(ofxSurfImage * _cam){
-    cam = _cam;
-}
-
-void ofxSurfMotion::update(){
-    oldIpts = cam->ipts;
-    motion.clear();
-    surfDetDes(cam->getCvImage(),cam->ipts,true,3,4,2,0.0004f);
-    getMatches(cam->ipts,oldIpts,matches);
-    for(uint i=0;i<matches.size();i++){
-        Motion m;
-        m.src.set(matches[i].first.x,matches[i].first.y);
-        m.dst.set(matches[i].second.x,matches[i].second.y);
-        float dx = matches[i].first.dx;
-        float dy = matches[i].first.dy;
-        m.speed = sqrtf(dx*dx+dy+dy);
-        motion.push_back(m);
-    }
-}
-
-void ofxSurfMotion::draw(int x, int y, float sz){
-    glPushMatrix();
-    glTranslatef(x,y,0);
-    glScalef(sz,sz,1);
-    ofSetHexColor(0xff0000);
-    ofNoFill();
-    for(uint i=0;i<motion.size();i++){
-        Motion m = motion[i];
-        ofLine(m.src.x,m.src.y,m.dst.x,m.dst.y);
-        ofCircle(m.src.x,m.src.y,m.speed);
-    }
-    glPopMatrix();
-}
-
-/*void ofxDrawMatch(int x,int y, float sz, IpPairVec match){
-    glPushMatrix();
-    glTranslatef(x,y,0);
-    glScalef(sz,sz,1);
-    for(uint i=0;i<matches.size();i++){
-        ofSetHexColor(0xff0000);
-        ofNoFill();
-        ofCircle(matches[i].first.x,matches[i].first.y,3);
-        ofCircle(matches[i].second.x+marker.width,matches[i].second.y,3);
-        ofSetHexColor(0xffff00);
-        ofLine(matches[i].first.x,matches[i].first.y,matches[i].second.x+marker.width,matches[i].second.y);
-    }
-    glPopMatrix();
-}*/

@@ -1,54 +1,29 @@
-#ifndef OFXOPENSURF_H
-#define OFXOPENSURF_H
+#pragma once
 
+#include "ofMain.h"
 #include "ofxOpenCv.h"
 #include "surflib.h"
-#include "ofxSurfImage.h"
 
-class ofxOpenSurf
+class ofxOpenSurf : public ofBaseApp
 {
-    public:
-        ofxOpenSurf();
-        virtual ~ofxOpenSurf();
+public:
+    
+     ofxOpenSurf();
+    ~ofxOpenSurf();
+    
+    void surfStaticImage    ( ofxCvImage* srcImage, ofxCvImage* trgImage );
+    void surfMotionImage    ( ofxCvImage* srcImage, ofxCvImage* trgImage );
+    bool findCorners        ( const ofPoint src_crn[ 4 ], ofPoint dst_crn[ 4 ] );
 
-        //void ofxDrawIpoints(int x, int y, float sz, std::vector<Ipoint> &ipts, int tailSize=0);
-    protected:
-    private:
+    void drawSourcePoints   ( int x=0, int y=0, float scale=1 );
+    void drawTargetPoints   ( int x=0, int y=0, float scale=1 );
+    void drawPoints         ( int x, int y, float scale, vector<Ipoint> &ipts, int tailSize = 0 );
+    
+    ofxCvImage* srcImage;
+    ofxCvImage* trgImage;
+    
+    IpVec srcIpts;
+    IpVec trgIpts;
+    
+    IpPairVec matches;
 };
-
-/*class ofxSurfStaticMatch{
-    public:
-        void match(ofxSurfImage * src, ofxSurfImage * dst);
-
-        //ofxSurfImage src;
-        //ofxSurfImage dst;
-
-        IpPairVec matches;
-};*/
-
-class ofxSurfMotion{
-    public:
-        void setup(ofxSurfImage * _cam);
-        void update();
-        void draw(int x=0, int y=0, float sz=1);
-
-        ofxSurfImage * cam;
-        IpVec oldIpts;
-        IpPairVec matches;
-
-        struct Motion{
-            ofPoint src;
-            ofPoint dst;
-            float speed;
-        };
-
-        vector <Motion> motion;
-};
-
-void ofxDrawIpoints(int x, int y, float sz, std::vector<Ipoint> &ipts, int tailSize=0);
-//void ofxDrawMatch(int x,int y, float sz, IpPairVec match);
-void ofxSurfStaticMatch(ofxSurfImage * src, ofxSurfImage * dst, IpPairVec *matches);
-void ofxSurfVideoMatch(ofxSurfImage * cam, ofxSurfImage * mrk, IpPairVec * matches);
-int ofxSurfObjCorners(IpPairVec & matches,const ofPoint src_crn[4],ofPoint dst_crn[4]);
-
-#endif // OFXOPENSURF_H
