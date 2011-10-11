@@ -2,84 +2,36 @@
 
 ofxOpenSurf :: ofxOpenSurf()
 {
-    srcImage = NULL;
-    trgImage = NULL;
+    srcImage = srcImageTemp = NULL;
+    trgImage = trgImageTemp = NULL;
 }
 
 ofxOpenSurf :: ~ofxOpenSurf()
 {
-    //
+    waitForThread();
+}
+
+void ofxOpenSurf :: setup ()
+{
+    startThread( true, false );
 }
 
 void ofxOpenSurf :: surfStaticImage ( ofxCvImage* srcImage, ofxCvImage* trgImage )
 {
-    if( this->srcImage != srcImage )
-    {
-        this->srcImage = srcImage;
-        
-        surfDetDes
-        ( 
-            srcImage->getCvImage(),     // image to find Ipoints in
-            srcIpts,                    // reference to vector of Ipoints
-            false,                      // run in rotation invariant mode?
-            4,                          // number of octaves to calculate
-            4,                          // number of intervals per octave
-            2,                          // initial sampling step
-            0.0006                      // blob response threshold
-        );
-    }
-    
-    if( this->trgImage != trgImage )
-    {
-        this->trgImage = trgImage;
-        
-        surfDetDes
-        ( 
-            trgImage->getCvImage(),     // image to find Ipoints in
-            trgIpts,                    // reference to vector of Ipoints
-            false,                      // run in rotation invariant mode?
-            4,                          // number of octaves to calculate
-            4,                          // number of intervals per octave
-            2,                          // initial sampling step
-            0.0006                      // blob response threshold
-        );
-    }
-    
-    getMatches( srcIpts, trgIpts, matches );
+    lock();
+    srcImageTemp = srcImage;
+    trgImageTemp = trgImage;
+    bSurfStaticImage = true;
+    unlock();
 }
 
 void ofxOpenSurf :: surfMotionImage ( ofxCvImage* srcImage, ofxCvImage* trgImage )
 {
-    if( this->srcImage != srcImage )
-    {
-        this->srcImage = srcImage;
-        
-        surfDetDes
-        ( 
-            srcImage->getCvImage(),     // image to find Ipoints in
-            srcIpts,                    // reference to vector of Ipoints
-            false,                      // run in rotation invariant mode?
-            4,                          // number of octaves to calculate
-            4,                          // number of intervals per octave
-            2,                          // initial sampling step
-            0.0004                      // blob response threshold
-        );
-    }
-    
-    this->trgImage = trgImage;
-    
-    surfDetDes
-    ( 
-        trgImage->getCvImage(),     // image to find Ipoints in
-        trgIpts,                    // reference to vector of Ipoints
-        false,                      // run in rotation invariant mode?
-        4,                          // number of octaves to calculate
-        4,                          // number of intervals per octave
-        2,                          // initial sampling step
-        0.001                       // blob response threshold
-    );
-    
-    getMatches( srcIpts, trgIpts, matches );
+    lock();
+    srcImageTemp = srcImage;
+    trgImageTemp = trgImage;
+    bSurfMotionImage = true;
+    unlock();
 }
 
 bool ofxOpenSurf :: findCorners ( const ofPoint src_crn[ 4 ], ofPoint dst_crn[ 4 ] )
@@ -111,6 +63,11 @@ bool ofxOpenSurf :: findCorners ( const ofPoint src_crn[ 4 ], ofPoint dst_crn[ 4
     }
     
     return success;
+}
+
+void ofxOpenSurf :: update ()
+{
+    //
 }
 
 void ofxOpenSurf :: drawSourcePoints ( int x, int y, float scale )
@@ -173,4 +130,104 @@ void ofxOpenSurf :: drawPoints ( int x, int y, float scale, vector<Ipoint> &ipts
         }
     }
     glPopMatrix();
+}
+
+void ofxOpenSurf :: threadedFunction() 
+{
+    while( isThreadRunning() )
+    {
+        if( bSurfStaticImage )
+        {
+            if( srcImage != srcImageTemp )
+            {
+                lock();
+                srcImage = srcImageTemp;
+                unlock();
+                
+                surfDetDes
+                ( 
+                    srcImage->getCvImage(),     // image to find Ipoints in
+                    srcIptsTemp,                // reference to vector of Ipoints
+                    false,                      // run in rotation invariant mode?
+                    4,                          // number of octaves to calculate
+                    4,                          // number of intervals per octave
+                    2,                          // initial sampling step
+                    0.0006                      // blob response threshold
+                 );
+            }
+            
+            if( trgImage != trgImageTemp )
+            {
+                lock();
+                trgImage = trgImageTemp;
+                unlock();
+                
+                surfDetDes
+                ( 
+                    trgImage->getCvImage(),     // image to find Ipoints in
+                    trgIptsTemp,                // reference to vector of Ipoints
+                    false,                      // run in rotation invariant mode?
+                    4,                          // number of octaves to calculate
+                    4,                          // number of intervals per octave
+                    2,                          // initial sampling step
+                    0.0006                      // blob response threshold
+                );
+            }
+            
+            getMatches( srcIptsTemp, trgIptsTemp, matchesTemp );
+            
+            lock();
+            srcIpts = srcIptsTemp;
+            trgIpts = trgIptsTemp;
+            matches = matchesTemp;
+            bSurfStaticImage = false;
+            unlock();
+
+        }
+        
+        if( bSurfMotionImage )
+        {
+            if( srcImage != srcImageTemp )
+            {
+                lock();
+                srcImage = srcImageTemp;
+                unlock();
+                
+                surfDetDes
+                ( 
+                    srcImage->getCvImage(),     // image to find Ipoints in
+                    srcIptsTemp,                // reference to vector of Ipoints
+                    false,                      // run in rotation invariant mode?
+                    4,                          // number of octaves to calculate
+                    4,                          // number of intervals per octave
+                    2,                          // initial sampling step
+                    0.0004                      // blob response threshold
+                );
+            }
+            
+            lock();
+            trgImage = trgImageTemp;
+            unlock();
+            
+            surfDetDes
+            ( 
+                trgImage->getCvImage(),     // image to find Ipoints in
+                trgIptsTemp,                // reference to vector of Ipoints
+                false,                      // run in rotation invariant mode?
+                4,                          // number of octaves to calculate
+                4,                          // number of intervals per octave
+                2,                          // initial sampling step
+                0.001                       // blob response threshold
+            );
+            
+            getMatches( srcIptsTemp, trgIptsTemp, matchesTemp );
+            
+            lock();
+            srcIpts = srcIptsTemp;
+            trgIpts = trgIptsTemp;
+            matches = matchesTemp;
+            bSurfMotionImage = false;
+            unlock();
+        }
+    }
 }
